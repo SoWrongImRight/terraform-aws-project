@@ -148,3 +148,81 @@ resource "aws_instance" "webserver1" {
       Name = "Web Server"
   }
 }
+
+# Create Web Security Group
+resource "aws_security_group" "web-sg" {
+  name = "Web-SG"
+  description = "Allow HTTP inbound traffic"
+  vpc_id = aws_vpc.my-vpc.id
+
+  ingress = [ {
+    cidr_blocks = [ "0.0.0.0/0" ]
+    description = "HTTP from VPC"
+    from_port = 80
+    protocol = "tcp"
+    to_port = 80
+  } ]
+
+  egress = [ {
+    cidr_blocks = [ "0.0.0.0/0" ]
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+  } ]
+
+  tags = {
+      Name = "Web-SG"
+  }
+}
+
+# Create the Web Server Security Group
+resource "aws_security_group" "webserver-sg" {
+  name = "Webserver-SG"
+  description = "Allow inbound traffic from ALB"
+  vpc_id = aws_vpc.my-vpc.id
+
+  ingress = [ {
+    description = "Allow traffic from web layer"
+    from_port = 80
+    protocol = "tcp"
+    to_port = 80
+    security_groups = [aws_security_group.web-sg.id]
+  } ]
+
+  egress = [ {
+    cidr_blocks = [ "0.0.0.0/0" ]
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+  } ]
+
+  tags = {
+      Name = "Webserver-SG"
+  }
+}
+
+# Create Databas Security Group
+resource "aws_security_group" "database-sg" {
+  name = "Database-SG"
+  description = "Allow inbound traffic from application layer"
+  vpc_id = aws_vpc.my-vpc.id
+
+  ingress = [ {
+    description = "Allow traffice from application layer"
+    from_port = 3306
+    protocol = "tcp"
+    security_groups = [ aws_security_group.webserver-sg.id ]
+    to_port = 3306
+  } ]
+
+  egress = [ {
+    from_port = 32768
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    to_port = 65535
+  } ]
+
+  tags = {
+      Name = "Database-SG"
+  }
+}
